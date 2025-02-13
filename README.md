@@ -20,7 +20,7 @@ GitHub action for scanning OCI container images and uploading the results to Git
 
 ### Scanning an image
 
-The image input requires a fully qualified image name (FQIN). This means that it must include both the image repository and the tag. Here are two examples of the fully qualified image name of the DockerHub hello-world image:
+The image input requires a fully qualified image name (FQIN). This means that it must include both the image repository and the tag/sha256. Here are two examples of the fully qualified image name of the DockerHub hello-world image:
 
 - `docker.io/library/hello-world:latest`
 - `docker.io/library/hello-world@sha256:d7...07`
