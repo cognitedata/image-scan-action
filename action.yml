@@ -55,7 +55,7 @@ runs:
 
     - name: Modify SARIF category
       shell: bash
-      run: python sarif.py "${{ inputs.image }}" "${{ inputs.trivy-output }}"
+      run: python ${{ github.action_path }}/sarif.py "${{ inputs.image }}" "${{ inputs.trivy-output }}"
 
     - name: Upload Trivy scan results to GitHub Security tab
       uses: github/codeql-action/upload-sarif@v3
@@ -73,17 +73,37 @@ runs:
           echo "findings=false" >> "$GITHUB_ENV"
         fi
 
-    - uses: actions/github-script@v7
-      if: ${{ env.findings == 'true' && github.event_name == 'pull_request' }}
+    - name: Find Comment
+      uses: peter-evans/find-comment@v3
+      id: fc
       with:
-        github-token: ${{ github.token }}
-        script: |
-          github.rest.issues.createComment({
-            issue_number: context.issue.number,
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            body: "🚨 Vulnerabilities were found for image: `${{ inputs.image }}`\n\n[View all pull request alerts](https://github.com/${{ github.repository }}/security/code-scanning?query=pr%3A${{ github.event.number }}+tool%3ATrivy+is%3Aopen)"  
-          })
+        issue-number: ${{ github.event.pull_request.number }}
+        comment-author: 'github-actions[bot]'
+        body-includes: ${{ inputs.image }}
+
+    - name: Resolve findings comment
+      if: ${{ steps.fc.outputs.comment-id != '' && env.findings == 'false' && github.event_name == 'pull_request' }}
+      uses: peter-evans/create-or-update-comment@v4
+      with:
+        comment-id: ${{ steps.fc.outputs.comment-id }}
+        issue-number: ${{ github.event.pull_request.number }}
+        body: |
+          🌟 No vulnerabilities in image:
+          `${{ inputs.image }}`
+        edit-mode: replace
+
+    - name: Create findings comment
+      if: ${{ steps.fc.outputs.comment-id == '' && env.findings == 'true' && github.event_name == 'pull_request' }}
+      uses: peter-evans/create-or-update-comment@v4
+      with:
+        comment-id: ${{ steps.fc.outputs.comment-id }}
+        issue-number: ${{ github.event.pull_request.number }}
+        body: |
+          🚨 Vulnerabilities were found for image:
+          `${{ inputs.image }}`
+
+          [View all pull request alerts](https://github.com/${{ github.repository }}/security/code-scanning?query=pr%3A${{ github.event.pull_request.number }}+tool%3ATrivy+is%3Aopen)
+        edit-mode: replace
 
     - name: Exit run
       if: ${{ env.findings == 'true' && inputs.exit-code == '1' && github.event_name == 'pull_request' }}
