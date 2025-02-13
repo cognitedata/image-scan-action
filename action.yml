@@ -1,0 +1,91 @@
+name: "Container image scanner"
+description: "Scan the container image and upload the results to GitHub"
+inputs:
+  image:
+    description: "The full image name, including hash or tag"
+    required: true
+  severity:
+    description: "severity"
+    required: true
+    default: "LOW,MEDIUM,HIGH,CRITICAL"
+  exit-code:
+    description: "Exit code when specified vulnerabilities are found"
+    required: true
+    default: "1"
+  vuln-type:
+    description: "Vulnerability types to scan for (os,library)"
+    required: true
+    default: "os"
+  trivy-output:
+    description: "Trivy SARIF file output path relative to root"
+    required: true
+    default: "trivy-results.sarif"
+  trivyignores:
+    description: "Comma-separated list of relative paths in repository to one or more .trivyignore files"
+    required: false
+  python-version:
+    description: "The Python version to use. Should work with 3.7+"
+    required: true
+    default: "3.12"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Trivy scan
+      uses: aquasecurity/trivy-action@0.29.0
+      with:
+        scan-type: "image"
+        scanners: "vuln"
+        image-ref: ${{ inputs.image }}
+        timeout: "15m"
+        hide-progress: true
+        ignore-unfixed: true
+        vuln-type: ${{ inputs.vuln-type }}
+        severity: ${{ inputs.severity }}
+        limit-severities-for-sarif: true
+        trivyignores: ${{ inputs.trivyignores }}
+        format: "sarif"
+        output: ${{ inputs.trivy-output }}
+        exit-code: "0"
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Modify SARIF category
+      shell: bash
+      run: python sarif.py "${{ inputs.image }}" "${{ inputs.trivy-output }}"
+
+    - name: Upload Trivy scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: ${{ inputs.trivy-output }}
+
+    - name: Check for Trivy findings
+      shell: bash
+      if: ${{ github.event_name == 'pull_request' }}
+      run: |
+        findings=$(jq '.runs[].results | length' "${{ inputs.trivy-output }}")
+        if [ "$findings" -gt 0 ]; then
+          echo "findings=true" >> "$GITHUB_ENV"
+        else
+          echo "findings=false" >> "$GITHUB_ENV"
+        fi
+
+    - uses: actions/github-script@v7
+      if: ${{ env.findings == 'true' && github.event_name == 'pull_request' }}
+      with:
+        github-token: ${{ github.token }}
+        script: |
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: "🚨 Vulnerabilities were found for image: `${{ inputs.image }}`\n\n[View all pull request alerts](https://github.com/${{ github.repository }}/security/code-scanning?query=pr%3A${{ github.event.number }}+tool%3ATrivy+is%3Aopen)"  
+          })
+
+    - name: Exit run
+      if: ${{ env.findings == 'true' && inputs.exit-code == '1' && github.event_name == 'pull_request' }}
+      shell: bash
+      run: exit 1
