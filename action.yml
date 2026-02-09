@@ -32,7 +32,7 @@ runs:
   using: "composite"
   steps:
     - name: Trivy scan
-      uses: aquasecurity/trivy-action@0.29.0
+      uses: aquasecurity/trivy-action@18f2510ee396bbf400402947b394f2dd8c87dbb0 # 0.29.0
       with:
         scan-type: "image"
         scanners: "vuln"
@@ -75,7 +75,7 @@ runs:
 
     - name: Find Comment
       if: ${{ github.event_name == 'pull_request' }}
-      uses: peter-evans/find-comment@v3
+      uses: peter-evans/find-comment@3eae4d37986fb5a8592848f6a574fdf654e61f9e # v3
       id: fc
       with:
         issue-number: ${{ github.event.pull_request.number }}
@@ -84,7 +84,7 @@ runs:
 
     - name: Resolve findings comment
       if: ${{ steps.fc.outputs.comment-id != '' && env.findings == 'false' && github.event_name == 'pull_request' }}
-      uses: peter-evans/create-or-update-comment@v4
+      uses: peter-evans/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043 # v4
       with:
         comment-id: ${{ steps.fc.outputs.comment-id }}
         issue-number: ${{ github.event.pull_request.number }}
@@ -95,7 +95,7 @@ runs:
 
     - name: Create findings comment
       if: ${{ steps.fc.outputs.comment-id == '' && env.findings == 'true' && github.event_name == 'pull_request' }}
-      uses: peter-evans/create-or-update-comment@v4
+      uses: peter-evans/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043 # v4
       with:
         comment-id: ${{ steps.fc.outputs.comment-id }}
         issue-number: ${{ github.event.pull_request.number }}
