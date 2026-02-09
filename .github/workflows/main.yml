@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Scan container image
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
       - uses: cognitedata/image-scan-action@v1
         with:
           image: "docker.io/library/hello-world@sha256:d715f14f9eca81473d9112df50457893aa4d099adeb4729f679006bf5ea12407"
