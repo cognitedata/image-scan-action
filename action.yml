@@ -58,7 +58,7 @@ runs:
       run: python ${{ github.action_path }}/sarif.py "${{ inputs.image }}" "${{ inputs.trivy-output }}"
 
     - name: Upload Trivy scan results to GitHub Security tab
-      uses: github/codeql-action/upload-sarif@38697555549f1db7851b81482ff19f1fa5c4fedc # v4
+      uses: github/codeql-action/upload-sarif@7211b7c8077ea37d8641b6271f6a365a22a5fbfa # v4
       with:
         sarif_file: ${{ inputs.trivy-output }}
 
